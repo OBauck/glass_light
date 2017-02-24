@@ -133,6 +133,52 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+void ws2812b_set_color(char color[])
+{
+	uint8_t red = 0;
+	uint8_t blue = 0;
+	uint8_t green = 0;
+	
+	if(strncmp("red", color, 3) == 0)
+	{
+		red = 255;
+	}
+	if(strncmp("yellow", color, 6) == 0)
+	{
+		red = 255;
+		green = 255;
+	}
+	if(strncmp("green", color, 5) == 0)
+	{
+		green = 255;
+	}
+	if(strncmp("cyan", color, 4) == 0)
+	{
+		green = 255;
+		blue = 255;
+	}
+	if(strncmp("blue", color, 4) == 0)
+	{
+		blue = 255;
+	}
+	if(strncmp("purple", color, 6) == 0)
+	{
+		blue = 255;
+		red = 255;
+	}
+	if(strncmp("white", color, 5) == 0)
+	{
+		red = 255;
+		green = 255;
+		blue = 255;
+	}
+	
+	for(uint8_t i = 0; i < NR_OF_PIXELS; i++)
+	{
+		nrf_drv_WS2812_set_pixel(i, red, green, blue);
+	}
+	nrf_drv_WS2812_show();
+}
 
 /**@brief Function for handling the data from the Nordic UART Service.
  *
@@ -146,7 +192,7 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	uint8_t x, y;
+	uint8_t x;
 	
     switch(p_data[0])
 	{
@@ -165,7 +211,6 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 		case 'P':
 			
 			x = p_data[1];
-			y = p_data[2];
 		
 			for(uint16_t i = 3; i < length; i+=3)
 			{
@@ -178,12 +223,13 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 		case 'I':
 			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
 			break;
+		case '$':
+			ws2812b_set_color((char *)&p_data[1]);
 		default:
 			break;
 	}
 }
 /**@snippet [Handling the data received over BLE] */
-
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -253,20 +299,6 @@ static void conn_params_init(void)
     cp_init.error_handler                  = conn_params_error_handler;
 
     err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
-}
-
-
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
-static void sleep_mode_enter(void)
-{
-    uint32_t err_code;
-
-    // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
 }
 
@@ -515,13 +547,30 @@ static void ws2812_test()
 
 static void charge_timer_handler(void *p_context)
 {
+	static uint8_t color;
 	uint32_t err_code = app_timer_start(m_charge_led_pulse_timer_id, CHARGING_LED_PULSE_LENGTH, NULL);
 	APP_ERROR_CHECK(err_code);
 	
+	color++;
+	if(color > 2)
+	{
+		color = 0;
+	}
 	//turn on LEDs
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 255, 0, 0);
+		switch(color)
+		{
+			case 0:
+				nrf_drv_WS2812_set_pixel(i, 255, 0, 0);
+				break;
+			case 1:
+				nrf_drv_WS2812_set_pixel(i, 0, 255, 0);
+				break;
+			case 2:
+				nrf_drv_WS2812_set_pixel(i, 0, 0, 255);
+				break;
+		}
 	}
 	
 	nrf_drv_WS2812_show();
@@ -591,7 +640,7 @@ int main(void)
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 
 	nrf_drv_WS2812_init(WS2812_PIN);
-	ws2812_test();
+	//ws2812_test();
 	
     ble_stack_init();
     gap_params_init();
