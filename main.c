@@ -87,6 +87,24 @@ APP_TIMER_DEF(m_charge_led_pulse_timer_id);
 #define CHARGING_TIMER_INTERVAL			APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
 #define CHARGING_LED_PULSE_LENGTH		APP_TIMER_TICKS(50, APP_TIMER_PRESCALER)
 
+APP_TIMER_DEF(m_fade_timer_id);
+#define FADE_TIMER_INTERVAL             APP_TIMER_TICKS(4000/256, APP_TIMER_PRESCALER)
+
+nrf_drv_WS2812_pixel_t fader_setpoint_1;
+nrf_drv_WS2812_pixel_t fader_setpoint_2;
+nrf_drv_WS2812_pixel_t fader_current_value;
+
+//TODO: change these to defines
+nrf_drv_WS2812_pixel_t color_red =    {.red = 255};
+nrf_drv_WS2812_pixel_t color_yellow = {.red = 255, .green = 255};
+nrf_drv_WS2812_pixel_t color_green =  {.green = 255};
+nrf_drv_WS2812_pixel_t color_cyan =   {.green = 255, .blue = 255};
+nrf_drv_WS2812_pixel_t color_blue =   {.blue = 255};
+nrf_drv_WS2812_pixel_t color_purple = {.red = 255, .blue = 255};
+nrf_drv_WS2812_pixel_t color_white =  {.red = 255, .green = 255, .blue = 255};
+nrf_drv_WS2812_pixel_t color_off;
+
+
 /**@brief Function for assert macro callback.
  *
  * @details This function will be called in case of an assert in the SoftDevice.
@@ -133,49 +151,43 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void ws2812b_set_color(char color[])
+void ws2812b_set_color(char str[])
 {
-	uint8_t red = 0;
-	uint8_t blue = 0;
-	uint8_t green = 0;
+	nrf_drv_WS2812_pixel_t color;
+    memset(&color, 0, sizeof(nrf_drv_WS2812_pixel_t));
 	
-	if(strncmp("red", color, 3) == 0)
+	if(strncmp("red", str, 3) == 0)
 	{
-		red = 255;
+        color = color_red;
 	}
-	if(strncmp("yellow", color, 6) == 0)
+	else if(strncmp("yellow", str, 6) == 0)
 	{
-		red = 255;
-		green = 255;
+		color = color_yellow;
 	}
-	if(strncmp("green", color, 5) == 0)
+	else if(strncmp("green", str, 5) == 0)
 	{
-		green = 255;
+		color = color_green;
 	}
-	if(strncmp("cyan", color, 4) == 0)
+	else if(strncmp("cyan", str, 4) == 0)
 	{
-		green = 255;
-		blue = 255;
+		color = color_cyan;
 	}
-	if(strncmp("blue", color, 4) == 0)
+	else if(strncmp("blue", str, 4) == 0)
 	{
-		blue = 255;
+		color = color_blue;
 	}
-	if(strncmp("purple", color, 6) == 0)
+	else if(strncmp("purple", str, 6) == 0)
 	{
-		blue = 255;
-		red = 255;
+		color = color_purple;
 	}
-	if(strncmp("white", color, 5) == 0)
+	else if(strncmp("white", str, 5) == 0)
 	{
-		red = 255;
-		green = 255;
-		blue = 255;
+		color = color_white;
 	}
 	
 	for(uint8_t i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, red, green, blue);
+		nrf_drv_WS2812_set_pixel(i, &color);
 	}
 	nrf_drv_WS2812_show();
 }
@@ -193,6 +205,7 @@ void ws2812b_set_color(char color[])
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
 	uint8_t x;
+    uint16_t i;
 	
     switch(p_data[0])
 	{
@@ -214,7 +227,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 		
 			for(uint16_t i = 3; i < length; i+=3)
 			{
-				nrf_drv_WS2812_set_pixel(x, p_data[i], p_data[i+1], p_data[i+2]);
+				nrf_drv_WS2812_set_pixel(x, &(nrf_drv_WS2812_pixel_t){p_data[i], p_data[i+1], p_data[i+2]});
 				nrf_drv_WS2812_show();
 			}
 			
@@ -224,7 +237,24 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
 			break;
 		case '$':
-			ws2812b_set_color((char *)&p_data[1]);
+            for(i = 0; i < length; i++)
+            {
+                if(p_data[i] == ',')
+                {
+                    break;
+                }
+            }
+            if(i < length)
+            {
+                //set setpoints
+                //start fadetimer
+            }
+            else
+            {
+                //stop fadetimer
+                ws2812b_set_color((char *)&p_data[1]);
+            }
+            break;
 		default:
 			break;
 	}
@@ -515,7 +545,7 @@ static void ws2812_test()
 {
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 255, 0, 0);
+		nrf_drv_WS2812_set_pixel(i, &color_red);
 	}
 	
 	nrf_drv_WS2812_show();
@@ -523,7 +553,7 @@ static void ws2812_test()
 	
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 0, 255, 0);
+		nrf_drv_WS2812_set_pixel(i, &color_green);
 	}
 	
 	nrf_drv_WS2812_show();
@@ -531,7 +561,7 @@ static void ws2812_test()
 	
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 0, 0, 255);
+		nrf_drv_WS2812_set_pixel(i, &color_blue);
 	}
 	
 	nrf_drv_WS2812_show();
@@ -539,7 +569,7 @@ static void ws2812_test()
 	
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 0, 0, 0);
+		nrf_drv_WS2812_set_pixel(i, &color_off);
 	}
 	
 	nrf_drv_WS2812_show();
@@ -562,13 +592,13 @@ static void charge_timer_handler(void *p_context)
 		switch(color)
 		{
 			case 0:
-				nrf_drv_WS2812_set_pixel(i, 255, 0, 0);
+				nrf_drv_WS2812_set_pixel(i, &color_red);
 				break;
 			case 1:
-				nrf_drv_WS2812_set_pixel(i, 0, 255, 0);
+				nrf_drv_WS2812_set_pixel(i, &color_green);
 				break;
 			case 2:
-				nrf_drv_WS2812_set_pixel(i, 0, 0, 255);
+				nrf_drv_WS2812_set_pixel(i, &color_blue);
 				break;
 		}
 	}
@@ -580,7 +610,7 @@ static void charge_led_pulse_timer_handler(void *p_context)
 {
 	for(int i = 0; i < NR_OF_PIXELS; i++)
 	{
-		nrf_drv_WS2812_set_pixel(i, 0, 0, 0);
+		nrf_drv_WS2812_set_pixel(i, &color_off);
 	}
 	
 	nrf_drv_WS2812_show();

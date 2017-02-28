@@ -21,13 +21,6 @@
 #define ONE_HIGH_TICKS          13      //14/16MHz = 0.8125us (should be 0.9us +-150ns)
 #define ZERO_HIGH_TICKS         5       //6/16MHz = 0.3125us (should be 0.35us +-150ns)
 
-typedef struct
-{
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} nrf_drv_WS2812_pixel_t;
-
 static nrf_drv_pwm_t m_pwm0 = NRF_DRV_PWM_INSTANCE(0);
 
 static nrf_pwm_values_common_t m_seq_values[NR_OF_PIXELS * 24 + RESET_ZEROS_AT_START + 1];     //RESET signal + 24 bits per pixel + one pwm cycle to set the output low at the end
@@ -84,11 +77,18 @@ void nrf_drv_WS2812_init(uint8_t pin)
 	nrf_drv_pwm_simple_playback(&m_pwm0, &m_seq, 1, 0);
 }
 
-void nrf_drv_WS2812_set_pixel(uint8_t pixel, uint8_t red, uint8_t green, uint8_t blue)
+
+void nrf_drv_WS2812_set_pixel_rgb(uint8_t pixel_nr, uint8_t red, uint8_t green, uint8_t blue)
 {
-    pixels[pixel].red = red;
-    pixels[pixel].green = green;
-    pixels[pixel].blue = blue;
+    pixels[pixel_nr].red = red;
+    pixels[pixel_nr].green = green;
+    pixels[pixel_nr].blue = blue;
+}
+
+
+void nrf_drv_WS2812_set_pixel(uint8_t pixel_nr, nrf_drv_WS2812_pixel_t *color)
+{
+    memcpy(&pixels[pixel_nr], color, sizeof(nrf_drv_WS2812_pixel_t));
 }
 
 void nrf_drv_WS2812_show(void)
