@@ -42,7 +42,7 @@
 
 #include "nrf_drv_ws2812.h"
 
-#define WS2812_PIN 28
+#define WS2812_PIN 29
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
@@ -681,7 +681,7 @@ int main(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
-	charge_detection_init(30);
+	charge_detection_init(8);
 	
     // Enter main loop.
     for (;;)

@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-#define NR_OF_PIXELS 5
+#define NR_OF_PIXELS 6
 
 typedef struct
 {
