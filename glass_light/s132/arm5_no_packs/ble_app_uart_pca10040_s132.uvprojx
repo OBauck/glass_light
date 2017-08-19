@@ -394,6 +394,21 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\nrf_drv_WS2812.c</FilePath>
             </File>
+            <File>
+              <FileName>lis3dh.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\lis3dh.c</FilePath>
+            </File>
+            <File>
+              <FileName>lis3dh.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\lis3dh.h</FilePath>
+            </File>
+            <File>
+              <FileName>pin_definitions.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\pin_definitions.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1148,6 +1163,11 @@
               <FileName>nrf_drv_pwm.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\..\..\..\components\drivers_nrf\pwm\nrf_drv_pwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>nrf_drv_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\..\..\..\components\drivers_nrf\spi_master\nrf_drv_spi.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2556,6 +2576,21 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\nrf_drv_WS2812.c</FilePath>
             </File>
+            <File>
+              <FileName>lis3dh.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\lis3dh.c</FilePath>
+            </File>
+            <File>
+              <FileName>lis3dh.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\lis3dh.h</FilePath>
+            </File>
+            <File>
+              <FileName>pin_definitions.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\..\pin_definitions.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -3310,6 +3345,11 @@
               <FileName>nrf_drv_pwm.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\..\..\..\components\drivers_nrf\pwm\nrf_drv_pwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>nrf_drv_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\..\..\..\components\drivers_nrf\spi_master\nrf_drv_spi.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -41,8 +41,8 @@
 #include "nrf_drv_gpiote.h"
 
 #include "nrf_drv_ws2812.h"
-
-#define WS2812_PIN 29
+#include "pin_definitions.h"
+#include "lis3dh.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
@@ -660,12 +660,15 @@ static void charge_detection_init(uint32_t pin)
 	APP_ERROR_CHECK(err_code);
 }
 
+static uint8_t data[2];
+
 /**@brief Application main function.
  */
 int main(void)
 {
     uint32_t err_code;
 
+    
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 
@@ -681,11 +684,19 @@ int main(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
-	charge_detection_init(8);
+	charge_detection_init(CHARGE_STAT_PIN);
 	
+    
+    /*
+    lis3dh_init();
+    
+    lis3dh_read(0x0F, data, 2);
+    */
     // Enter main loop.
     for (;;)
     {
+        //nrf_delay_ms(1000);
+        //lis3dh_read(0x0F, data, 2);
         power_manage();
     }
 }
