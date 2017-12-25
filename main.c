@@ -221,14 +221,14 @@ static void nus_data_handler(ble_nus_t * p_nus, nrf_drv_WS2812_pixel_t *p_color)
             nrf_gpio_pin_set(17);
         
         if(p_color->blue)
-            nrf_gpio_pin_clear(18);
-        else
-            nrf_gpio_pin_set(18);
-        
-        if(p_color->green)
             nrf_gpio_pin_clear(19);
         else
             nrf_gpio_pin_set(19);
+        
+        if(p_color->green)
+            nrf_gpio_pin_clear(18);
+        else
+            nrf_gpio_pin_set(18);
     #endif
         
         
