@@ -32,13 +32,14 @@
 #include "softdevice_handler.h"
 #include "app_timer.h"
 #include "app_button.h"
-#include "ble_nus.h"
+#include "ble_glass_light.h"
 #include "app_uart.h"
 #include "app_util_platform.h"
 #include "bsp.h"
 #include "bsp_btn_ble.h"
 #include "nrf_delay.h"
 #include "nrf_drv_gpiote.h"
+#include "advertiser_beacon.h"
 
 #include "nrf_drv_ws2812.h"
 #include "pin_definitions.h"
@@ -104,6 +105,9 @@ nrf_drv_WS2812_pixel_t color_purple = {.red = 255, .blue = 255};
 nrf_drv_WS2812_pixel_t color_white =  {.red = 255, .green = 255, .blue = 255};
 nrf_drv_WS2812_pixel_t color_off;
 
+#define BEACON_ADV_INTERVAL      760
+#define BEACON_URL               "\x03goo.gl/rX4mVo" /**< https://goo.gl/pIWdir short for https://developer.nordicsemi.com/thingy/52/ */
+#define BEACON_URL_LEN           14
 
 /**@brief Function for assert macro callback.
  *
@@ -202,62 +206,33 @@ void ws2812b_set_color(char str[])
  * @param[in] length   Length of the data.
  */
 /**@snippet [Handling the data received over BLE] */
-static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
+static void nus_data_handler(ble_nus_t * p_nus, nrf_drv_WS2812_pixel_t *p_color)
 {
-	uint8_t x;
-    uint16_t i;
-	
-    switch(p_data[0])
-	{
-		case 'V':
-			ble_nus_string_send(&m_nus, (uint8_t *)"Neopixel v1.0", 13);
-			break;
-		case 'S':
-			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
-			break;
-		case 'C':
-			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
-			break;
-		case 'B':
-			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
-			break;
-		case 'P':
-			
-			x = p_data[1];
-		
-			for(uint16_t i = 3; i < length; i+=3)
-			{
-				nrf_drv_WS2812_set_pixel(x, &(nrf_drv_WS2812_pixel_t){p_data[i], p_data[i+1], p_data[i+2]});
-				nrf_drv_WS2812_show();
-			}
-			
-			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
-			break;
-		case 'I':
-			ble_nus_string_send(&m_nus, (uint8_t *)"Ok", 2);
-			break;
-		case '$':
-            for(i = 0; i < length; i++)
-            {
-                if(p_data[i] == ',')
-                {
-                    break;
-                }
-            }
-            if(i < length)
-            {
-                //set setpoints
-                //start fadetimer
-            }
-            else
-            {
-                //stop fadetimer
-                ws2812b_set_color((char *)&p_data[1]);
-            }
-            break;
-		default:
-			break;
-	}
+    #if defined(BOARD_CUSTOM)
+        for(uint8_t i = 0; i < NR_OF_PIXELS; i++)
+        {
+            nrf_drv_WS2812_set_pixel(i, p_color);
+        }
+        nrf_drv_WS2812_show();
+    #elif defined(BOARD_PCA10040)
+        if(p_color->red)
+            nrf_gpio_pin_clear(17);
+        else
+            nrf_gpio_pin_set(17);
+        
+        if(p_color->blue)
+            nrf_gpio_pin_clear(18);
+        else
+            nrf_gpio_pin_set(18);
+        
+        if(p_color->green)
+            nrf_gpio_pin_clear(19);
+        else
+            nrf_gpio_pin_set(19);
+    #endif
+        
+        
+    
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -371,6 +346,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
         case BLE_GAP_EVT_DISCONNECTED:
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+        
+            //turn off LEDs
+            #if defined(BOARD_CUSTOM)
+                for(uint8_t i = 0; i < NR_OF_PIXELS; i++)
+                {
+                    nrf_drv_WS2812_set_pixel(i, &color_off);
+                }
+                nrf_drv_WS2812_show();
+            #elif defined(BOARD_PCA10040)
+                nrf_gpio_pin_set(17);
+                nrf_gpio_pin_set(18);
+                nrf_gpio_pin_set(19);
+            #endif
             break; // BLE_GAP_EVT_DISCONNECTED
 
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
@@ -462,7 +450,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
-    bsp_btn_ble_on_ble_evt(p_ble_evt);
 
 }
 
@@ -660,7 +647,54 @@ static void charge_detection_init(uint32_t pin)
 	APP_ERROR_CHECK(err_code);
 }
 
-static uint8_t data[2];
+void gpio_led_init()
+{
+    nrf_gpio_pin_set(17);
+    nrf_gpio_pin_set(18);
+    nrf_gpio_pin_set(19);
+    
+    nrf_gpio_cfg_output(17);
+    nrf_gpio_cfg_output(18);
+    nrf_gpio_cfg_output(19);
+}
+
+/**@brief Function for handling a BeaconAdvertiser error.
+ *
+ * @param[in]   nrf_error   Error code containing information about what went wrong.
+ */
+static void beacon_advertiser_error_handler(uint32_t nrf_error)
+{
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+
+/**@brief Function for initializing the beacon timeslot functionality.
+ */
+static uint32_t timeslot_init(void)
+{
+    uint32_t err_code;
+    static ble_beacon_init_t beacon_init;
+
+    beacon_init.adv_interval  =  BEACON_ADV_INTERVAL;
+    beacon_init.p_data         = (uint8_t *)BEACON_URL;
+    beacon_init.data_size      = BEACON_URL_LEN;
+    beacon_init.error_handler = beacon_advertiser_error_handler;
+
+    err_code = sd_ble_gap_addr_get(&beacon_init.beacon_addr);
+
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    // Increment device address by 2 for beacon advertising.
+    beacon_init.beacon_addr.addr[0] += 2;
+
+    app_beacon_init(&beacon_init);
+    app_beacon_start();
+
+    return NRF_SUCCESS;
+}
 
 /**@brief Application main function.
  */
@@ -672,8 +706,12 @@ int main(void)
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 
-	nrf_drv_WS2812_init(WS2812_PIN);
-	//ws2812_test();
+    #if defined(BOARD_CUSTOM)
+        nrf_drv_WS2812_init(WS2812_PIN);
+        //ws2812_test();
+    #elif defined(BOARD_PCA10040)
+        gpio_led_init();
+    #endif
 	
     ble_stack_init();
     gap_params_init();
@@ -684,7 +722,11 @@ int main(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
-	charge_detection_init(CHARGE_STAT_PIN);
+    timeslot_init();
+
+    #if defined(BOARD_CUSTOM)
+        charge_detection_init(CHARGE_STAT_PIN);
+    #endif
 	
     
     /*
