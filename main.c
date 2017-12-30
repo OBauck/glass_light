@@ -41,6 +41,10 @@
 #include "nrf_drv_gpiote.h"
 #include "advertiser_beacon.h"
 
+#define NRF_LOG_MODULE_NAME "APP"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+
 #include "nrf_drv_ws2812.h"
 #include "pin_definitions.h"
 #include "lis3dh.h"
@@ -453,6 +457,10 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 
 }
 
+static void sys_evt_dispatch(uint32_t evt_id)
+{
+    app_beacon_on_sys_evt(evt_id);
+}
 
 /**@brief Function for the SoftDevice initialization.
  *
@@ -488,6 +496,9 @@ static void ble_stack_init(void)
 
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
+    APP_ERROR_CHECK(err_code);
+    
+    err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -701,7 +712,6 @@ static uint32_t timeslot_init(void)
 int main(void)
 {
     uint32_t err_code;
-
     
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
@@ -712,7 +722,12 @@ int main(void)
     #elif defined(BOARD_PCA10040)
         gpio_led_init();
     #endif
-	
+    
+    err_code = NRF_LOG_INIT(NULL);
+    APP_ERROR_CHECK(err_code);
+    
+    NRF_LOG_INFO("Glass light v1.0");
+    
     ble_stack_init();
     gap_params_init();
     services_init();
@@ -739,7 +754,10 @@ int main(void)
     {
         //nrf_delay_ms(1000);
         //lis3dh_read(0x0F, data, 2);
-        power_manage();
+        if (NRF_LOG_PROCESS() == false)
+        {
+            power_manage();
+        }
     }
 }
 
